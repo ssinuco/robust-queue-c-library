@@ -25,6 +25,7 @@ typedef unsigned int QTICKET;
 #define QE_TOOMANYQS	-7		/* too many queues in use (max 100) */
 #define QE_INTINCON	-8		/* internal inconsistency */
 #define	QE_TOOFULL	-9		/* queue is too full */
+#define QE_INVALIDSIZE -10
 
 /*
  * the error buffer; contains a message describing the last queue
@@ -35,15 +36,7 @@ extern char qe_errbuf[256];
 /*
  * forward declarations, for K&R and ANSI C
  */
-#ifdef __STDC__
-QTICKET create_queue(void);		/* create a queue */
+QTICKET create_queue(int);		/* create a queue */
 int delete_queue(QTICKET);		/* delete a queue */
 int put_on_queue(QTICKET, int);		/* put number on end of queue */
 int take_off_queue(QTICKET);		/* pull number off front of queue */
-#else
-QTICKET create_queue();			/* create a queue */
-int delete_queue();			/* delete a queue */
-int put_on_queue();			/* put number on end of queue */
-int take_off_queue();			/* pull number off front of queue */
-#endif
-

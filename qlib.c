@@ -1,3 +1,4 @@
+
 /*
  * qlib.c              Matt Bishop		April 1, 2005
  *
@@ -36,8 +37,6 @@
  * various macros
  */
 #define DEBUG			/* includes a queue lister for debugging */
-#define MAXQ	1024		/* max number of queues */
-#define MAXELT	1024		/* max number of elements per queue */
 #define IOFFSET	0x1221		/* used to hide index number in ticket */
 #define NOFFSET	0x0502		/* used to hide nonce in ticket */
 #define EMPTY	-1		/* illegal index to show nothing in queue */
@@ -48,7 +47,7 @@
 typedef int QELT;		/* type of element being queued */
 typedef struct queue {
 	QTICKET ticket;		/* contains unique queue ID */
-	QELT que[MAXELT];	/* the actual queue */
+	QELT *que;	/* the actual queue */
 	int head;		/* head iundex in que of the queue */
 	int count;		/* number of elements in queue */
 } QUEUE;
@@ -68,9 +67,13 @@ char qe_errbuf[256] = "no error";	/* the error message buffer */
 /*
  * global variables
  */
-static QUEUE *queues[MAXQ];		/* the queues */
+static QUEUE **queues;		/* the queues */
 					/* nonce generator -- this MUST be */
 static unsigned int noncectr = 1;	/* non-zero always 		   */
+
+static int MAXELT = 0;
+
+static int MAXQ = 0;
 
 /*
  * generate a ticket number
@@ -164,7 +167,7 @@ static int readref(QTICKET qno)
 	 * thing)
 	 */
 	if (queues[index]->ticket != qno){
-		ERRBUF3("readref: ticket refers to old queue (new=%u, old=%u)", 
+		ERRBUF3("readref: ticket refers to old queue (new=%u, old=%u)",
 				((queues[index]->ticket)&0xffff) - IOFFSET,
 				(qno&0xffff) - NOFFSET);
 		return(QE_BADTICKET);
@@ -191,26 +194,43 @@ static int readref(QTICKET qno)
 /*
  * create a new queue
  *
- * PARAMETERS:	none
+ * PARAMETERS:	INT size maximum size of the queue.
  * RETURNED:	QTICKET		token (if > 0); error number (if < 0)
  * ERRORS:	QE_BADPARAM	parameter is NULL
+ *		QE_INVALIDSIZE	invalid size
  *		QE_TOOMANYQS	too many queues allocated already
  *		QE_NOROOM	no memory to allocate new queue
  *				(qe_errbuf has descriptive string)
  * EXCEPTIONS:	none
  */
-QTICKET create_queue(void)
+QTICKET create_queue(int size)
 {
 	register int cur;	/* index of current queue */
 	register int tkt;	/* new ticket for current queue */
+
+	if(MAXQ <= 0){
+        if ((queues = (QUEUE **)malloc((MAXQ + 1)* sizeof(QUEUE *))) == NULL){
+            ERRBUF("create_queue: malloc: no more memory");
+            return(QE_NOROOM);
+        }
+        MAXQ++;
+	}
+
+	if(size <= 0){
+        ERRBUF2("create_queue: invalid size (%d)", size);
+		return(QE_INVALIDSIZE);
+	}
 
 	/* check for array full */
 	for(cur = 0; cur < MAXQ; cur++)
 		if (queues[cur] == NULL)
 			break;
 	if (cur == MAXQ){
-		ERRBUF2("create_queue: too many queues (max %d)", MAXQ);
-		return(QE_TOOMANYQS);
+        if((queues = (QUEUE **)realloc(queues, (MAXQ + 1) * sizeof(QUEUE *))) == NULL){
+            ERRBUF2("create_queue: too many queues (max %d)", MAXQ);
+            return(QE_TOOMANYQS);
+		}
+        MAXQ++;
 	}
 
 	/* allocate a new queue */
@@ -226,6 +246,13 @@ QTICKET create_queue(void)
 		queues[cur] = NULL;
 		return(tkt);
 	}
+
+    // Dynamically allocate memory for the array
+    if ((queues[cur]->que = (QELT *)malloc(size * sizeof(QELT))) == NULL){
+        ERRBUF("create_queue: malloc: no more memory");
+		return(QE_NOROOM);
+    }
+    MAXELT = size;
 
 	/* now initialize queue entry */
 	queues[cur]->head = queues[cur]->count = 0;
@@ -259,6 +286,7 @@ int delete_queue(QTICKET qno)
 	/*
 	 * free the queue and reset the array element
 	 */
+    (void) free(queues[cur]->que);
 	(void) free(queues[cur]);
 	queues[cur] = NULL;
 
