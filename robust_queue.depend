@@ -1,0 +1,20 @@
+# depslib dependency file v1.0
+1711309685 source:/home/sergio/Development/robust_queue/main.c
+	<stdio.h>
+	<stdlib.h>
+	"qlib.h"
+
+1711309325 /home/sergio/Development/robust_queue/qlib.h
+
+1711294874 source:/home/sergio/Development/robust_queue/queue.c
+	<stdio.h>
+	<strings.h>
+	<stdlib.h>
+	"qlib.h"
+
+1711303584 source:/home/sergio/Development/robust_queue/qlib.c
+	<stdio.h>
+	<strings.h>
+	<stdlib.h>
+	"qlib.h"
+
